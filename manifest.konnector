@@ -3,7 +3,7 @@
   "name": "Via-santé",
   "type": "konnector",
   "language": "node",
-  "icon": "ag2r-la-mondiale-logo-carre.jpg",
+  "icon": "ag2r.png",
   "slug": "viasanté",
   "source": "git@github.com:konnectors/template.git",
   "editor": "Cozy",
