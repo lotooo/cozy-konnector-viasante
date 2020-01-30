@@ -5,7 +5,7 @@
   "language": "node",
   "icon": "ag2r.png",
   "slug": "viasanté",
-  "source": "git@github.com:konnectors/template.git",
+  "source": "git@github.com:lotooo/cozy-konnector-viasante.git",
   "editor": "Cozy",
   "vendor_link": "https://www.mutuelle-viasante.fr/",
   "categories": ["insurance"],
