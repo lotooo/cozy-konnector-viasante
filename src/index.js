@@ -34,7 +34,6 @@ module.exports = new BaseKonnector(start)
 async function start(fields, cozyParameters) {
   log('info', 'Authenticating ...')
   if (cozyParameters) log('debug', 'Found COZY_PARAMETERS')
-  //await authenticate(fields.login, fields.password)
   var login_options = {
       method: 'POST',
       uri: `${baseUrl}/api/identity/login`,
