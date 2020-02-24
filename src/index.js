@@ -55,6 +55,7 @@ async function start(fields, cozyParameters) {
   // The BaseKonnector instance expects a Promise as return of the function
   log('info', 'Getting info about the subscribed contracts')
   const contracts = await request(`${baseUrl}/api/adherent/contrats`)
+  let today = new Date();
   contracts['contrats'].forEach(async function(contrat){
       var numContrat = parseInt(contrat['numContrat'])
 
@@ -67,7 +68,7 @@ async function start(fields, cozyParameters) {
           },
           qs: {
               "startDate": "2018-01-31T23:00:00Z",
-              "endDate": "2020-01-31T23:00:00Z",
+              "endDate": today.toISOString(),
               "numeroContratIndividuel": numContrat,
           },
           json: true // Automatically stringifies the body to JSON
@@ -121,7 +122,7 @@ async function start(fields, cozyParameters) {
               "numContrat": numContrat,
               "period": 24,
               "startDate": "2018-01-31",
-              "endDate": "2020-01-31",
+              "endDate": today.toISOString().slice(0, 10),
           },
           json: true // Automatically stringifies the body to JSON
       };
