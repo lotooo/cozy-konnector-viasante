@@ -55,8 +55,10 @@ async function start(fields, cozyParameters) {
   log('info', 'Getting info about the subscribed contracts')
   const contracts = await request(`${baseUrl}/api/adherent/contrats`)
   let today = new Date();
-  contracts['contrats'].forEach(async function(contrat){
+  let extraction_start_date = new Date(new Date().setFullYear(new Date().getFullYear() - 2));
+  for (contrat of contracts['contrats']) { 
       var numContrat = parseInt(contrat['numContrat'])
+      log('info', `Getting data for contrat ${numContrat}`)
 
       log('info', 'Parsing list of Documents')
       var documents_options = {
@@ -66,7 +68,7 @@ async function start(fields, cozyParameters) {
               'Content-Type': 'application/json'
           },
           qs: {
-              "startDate": "2018-01-31T23:00:00Z",
+              "startDate": extraction_start_date.toISOString(),
               "endDate": today.toISOString(),
               "numeroContratIndividuel": numContrat,
           },
@@ -74,7 +76,7 @@ async function start(fields, cozyParameters) {
       };
       const documents = await request(documents_options)
       let documents_to_download = Array()
-      documents.forEach(async function(document){
+      for (document of documents) {
           var document_options = {
               method: 'GET',
               uri: `${baseUrl}/api/adherent/courriers/document`,
@@ -102,13 +104,15 @@ async function start(fields, cozyParameters) {
               version: 1
             }
           }
-          await saveFiles([pdf_info], fields, {
-            fileIdAttributes: ['numContrat', ],
-            subPath: `${numContrat}`,
-            contentType: 'application/pdf',
-            sourceAccount: this.accountId,
-            sourceAccountIdentifier: fields.login
-          })
+          documents_to_download.push(pdf_info)
+      };
+      log('info', 'Downloading documents')
+      await saveFiles(documents_to_download, fields, {
+        fileIdAttributes: ['numContrat', ],
+        subPath: `${numContrat}`,
+        contentType: 'application/pdf',
+        sourceAccount: this.accountId,
+        sourceAccountIdentifier: fields.login
       });
       log('info', 'Parsing list of Payments')
       var payments_options = {
@@ -120,13 +124,15 @@ async function start(fields, cozyParameters) {
           qs: {
               "numContrat": numContrat,
               "period": 24,
-              "startDate": "2018-01-31",
-              "endDate": today.toISOString().slice(0, 10),
+              "startDate": extraction_start_date.toISOString().slice(0, 10),
+              "endDate": today.toISOString().slice(0, 10)
           },
           json: true // Automatically stringifies the body to JSON
       };
       const payments = await request(payments_options)
-      payments['paiements'].forEach(async function(paiement){
+      let payments_to_link = Array()
+      for (paiement of payments['paiements']) {
+          log('info', `Extracting paiement info for paiement ${paiement['numeroPaiement']}`)
           var payment_options = {
               method: 'GET',
               uri: `${baseUrl}/api/adherent/prestations/operations-avec-details/${paiement['numeroPaiement']}`,
@@ -136,8 +142,11 @@ async function start(fields, cozyParameters) {
               json: true // Automatically stringifies the body to JSON
           };
           const payment_details = await request(payment_options)
-          payment_details.forEach(async function(detail_paiement){
-              detail_paiement['details'].forEach(async function(remboursement){
+          log('debug', payment_details) 
+          for (detail_paiement of payment_details) {
+              log('info', `Extracting paiement detail for paiement ${paiement['numeroPaiement']}`)
+              for (remboursement of detail_paiement['details']) {
+                  log('info', `Found a new refund`)
                   const paiement_info = {
                     amount: remboursement['montantRC'],
                     contractId: paiement['numeroPaiement'],
@@ -159,17 +168,36 @@ async function start(fields, cozyParameters) {
                       version: 1
                     }
                   }
-                  await saveBills([paiement], fields, {
-                    // This is a bank identifier which will be used to link bills to bank operations. These
-                    // identifiers should be at least a word found in the title of a bank operation related to this
-                    // bill. It is not case sensitive.
-                    identifiers: ['VIASANTE'],
-                    sourceAccount: this.accountId,
-                    sourceAccountIdentifier: fields.login
-                  })
-             });
-          });
-      });
-  });
+                  payments_to_link.push(paiement_info)
+             };
+          };
+      };
+      log('info', 'Saving Bills')
+      await saveBills(payments_to_link, fields, {
+        // This is a bank identifier which will be used to link bills to bank operations. These
+        // identifiers should be at least a word found in the title of a bank operation related to this
+        // bill. It is not case sensitive.
+        identifiers: ['VIASANTE'],
+        sourceAccount: this.accountId,
+        sourceAccountIdentifier: fields.login
+      })
+  //});
+  };
 }
 
+function authenticate(login, password) {
+  var login_options = {
+      method: 'POST',
+      uri: `${baseUrl}/api/identity/login`,
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: {
+          'userName': fields.login,
+          'password': fields.password
+      },
+      json: true // Automatically stringifies the body to JSON
+  };
+
+  return request(login_options)
+}
