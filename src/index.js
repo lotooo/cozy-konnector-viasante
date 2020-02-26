@@ -75,6 +75,7 @@ async function start(fields, cozyParameters) {
           json: true // Automatically stringifies the body to JSON
       };
       const documents = await request(documents_options)
+      log('info', `Found ${documents.length} documents`)
       let documents_to_download = Array()
       for (document of documents) {
           var document_options = {
@@ -139,10 +140,16 @@ async function start(fields, cozyParameters) {
               headers: {
                   'Content-Type': 'application/json'
               },
+              qs: {
+                  "numContrat": numContrat,
+                  "numPaiement": paiement['numeroPaiement'],
+                  "period": 24,
+                  "startDate": extraction_start_date.toISOString().slice(0, 10),
+                  "endDate": today.toISOString().slice(0, 10)
+              },
               json: true // Automatically stringifies the body to JSON
           };
           const payment_details = await request(payment_options)
-          log('debug', payment_details) 
           for (detail_paiement of payment_details) {
               log('info', `Extracting paiement detail for paiement ${paiement['numeroPaiement']}`)
               for (remboursement of detail_paiement['details']) {
@@ -183,21 +190,4 @@ async function start(fields, cozyParameters) {
       })
   //});
   };
-}
-
-function authenticate(login, password) {
-  var login_options = {
-      method: 'POST',
-      uri: `${baseUrl}/api/identity/login`,
-      headers: {
-          'Content-Type': 'application/json'
-      },
-      body: {
-          'userName': fields.login,
-          'password': fields.password
-      },
-      json: true // Automatically stringifies the body to JSON
-  };
-
-  return request(login_options)
 }
