@@ -200,7 +200,6 @@ async function start(fields, cozyParameters) {
           const payment_details = await request(payment_options)
           for (detail_paiement of payment_details) {
               for (remboursement of detail_paiement['details']) {
-                  log('debug', remboursement)
                   const paiement_info = {
                     amount: remboursement['montantRC'],
                     contractId: numContrat,
