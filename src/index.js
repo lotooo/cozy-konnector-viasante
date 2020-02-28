@@ -203,7 +203,7 @@ async function start(fields, cozyParameters) {
                   log('debug', remboursement)
                   const paiement_info = {
                     amount: remboursement['montantRC'],
-                    contractId: paiement['numeroPaiement'],
+                    contractId: numContrat,
                     currency: "EUR",
                     date: paiement['datePaiement'],
                     groupAmount: detail_paiement['montantRC'],
