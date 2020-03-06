@@ -1,3 +1,9 @@
+// Force sentry DSN into environment variables
+// In the future, will be set by the stack
+process.env.SENTRY_DSN =
+  process.env.SENTRY_DSN ||
+  'https://b266b0c0678f42d696d1417fac037021@sentry.cozycloud.cc/133'
+
 const {
   BaseKonnector,
   requestFactory,
@@ -50,13 +56,13 @@ async function start(fields, cozyParameters) {
   await request(login_options)
 
   log('info', 'Successfully logged in')
-  
+
   // The BaseKonnector instance expects a Promise as return of the function
   log('info', 'Getting info about the subscribed contracts')
   const contracts = await request(`${baseUrl}/api/adherent/contrats`)
   let today = new Date();
   let extraction_start_date = new Date(new Date().setFullYear(new Date().getFullYear() - 2));
-  for (contrat of contracts['contrats']) { 
+  for (contrat of contracts['contrats']) {
       var numContrat = parseInt(contrat['numContrat'])
       log('info', `Getting data for contrat ${numContrat}`)
 
@@ -92,7 +98,7 @@ async function start(fields, cozyParameters) {
               //real_document_date = real_date_found[0]
               d = real_date_found[0].split('/')
               real_document_date = utils.formatDate(new Date(d[2], d[1]-1, d[0]))
-              
+
           }
           else {
               real_document_date = utils.formatDate(document['dateCreation'])
@@ -169,14 +175,14 @@ async function start(fields, cozyParameters) {
           /*
           Let's try to find a mail about this payment
           We extract the payment date and check the list of
-          received documents (mails) to find the good one 
+          received documents (mails) to find the good one
           */
           for (document_date in document_per_day) {
               // Parse the string and convert it to a Date object
               mail_date =  new Date(Date.parse(document_date))
               if (new Date(Date.parse(paiement['datePaiement'])) < mail_date) {
                   // We are looping the keys in order
-                  // if our paiement is more recent than our mail, 
+                  // if our paiement is more recent than our mail,
                   // it means we found the good mail
                   document_to_link =  document_date
                   break

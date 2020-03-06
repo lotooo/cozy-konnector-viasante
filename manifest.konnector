@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
-  "name": "Via-santé",
+  "name": "Viasanté",
   "type": "konnector",
   "language": "node",
   "icon": "ag2r.png",
   "slug": "viasante",
-  "source": "git@github.com:lotooo/cozy-konnector-viasante.git",
-  "editor": "Cozy",
+  "source": "git@github.com:konnectors/viasante.git",
+  "editor": "lotooo",
   "vendor_link": "https://www.mutuelle-viasante.fr/",
   "categories": ["insurance"],
   "fields": {
@@ -43,7 +43,7 @@
     }
   },
   "developer": {
-    "name": "Cozy Cloud",
+    "name": "Lotooo",
     "url": "https://cozy.io"
   },
   "langs": ["fr", "en"],
