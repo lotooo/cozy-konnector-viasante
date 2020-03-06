@@ -3,7 +3,7 @@
   "name": "Viasanté",
   "type": "konnector",
   "language": "node",
-  "icon": "ag2r.png",
+  "icon": "icon.svg",
   "slug": "viasante",
   "source": "git@github.com:konnectors/viasante.git",
   "editor": "lotooo",
