@@ -99,13 +99,12 @@ async function start(fields, cozyParameters) {
           */
       let real_date_pattern = /[0-9]{2}\/[0-9]{2}\/[0-9]{4}/g
       let real_date_found = document['fileName'].match(real_date_pattern)
+      let real_document_date
       if (real_date_found) {
         let d = real_date_found[0].split('/')
-        let real_document_date = utils.formatDate(
-          new Date(d[2], d[1] - 1, d[0])
-        )
+        real_document_date = utils.formatDate(new Date(d[2], d[1] - 1, d[0]))
       } else {
-        let real_document_date = utils.formatDate(document['dateCreation'])
+        real_document_date = utils.formatDate(document['dateCreation'])
       }
 
       log(
