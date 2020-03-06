@@ -7,8 +7,6 @@ process.env.SENTRY_DSN =
 const {
   BaseKonnector,
   requestFactory,
-  signin,
-  scrape,
   saveBills,
   saveFiles,
   log,
@@ -41,17 +39,17 @@ async function start(fields, cozyParameters) {
   log('info', 'Authenticating ...')
   if (cozyParameters) log('debug', 'Found COZY_PARAMETERS')
   var login_options = {
-      method: 'POST',
-      uri: `${baseUrl}/api/identity/login`,
-      headers: {
-          'Content-Type': 'application/json'
-      },
-      body: {
-          'userName': fields.login,
-          'password': fields.password
-      },
-      json: true // Automatically stringifies the body to JSON
-  };
+    method: 'POST',
+    uri: `${baseUrl}/api/identity/login`,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: {
+      userName: fields.login,
+      password: fields.password
+    },
+    json: true // Automatically stringifies the body to JSON
+  }
 
   await request(login_options)
 
@@ -60,70 +58,191 @@ async function start(fields, cozyParameters) {
   // The BaseKonnector instance expects a Promise as return of the function
   log('info', 'Getting info about the subscribed contracts')
   const contracts = await request(`${baseUrl}/api/adherent/contrats`)
-  let today = new Date();
-  let extraction_start_date = new Date(new Date().setFullYear(new Date().getFullYear() - 2));
-  for (contrat of contracts['contrats']) {
-      var numContrat = parseInt(contrat['numContrat'])
-      log('info', `Getting data for contrat ${numContrat}`)
+  let today = new Date()
+  let extraction_start_date = new Date(
+    new Date().setFullYear(new Date().getFullYear() - 2)
+  )
+  for (let contrat of contracts['contrats']) {
+    var numContrat = parseInt(contrat['numContrat'])
+    log('info', `Getting data for contrat ${numContrat}`)
 
-      log('info', 'Getting list of available documents')
-      var documents_options = {
-          method: 'GET',
-          uri: `${baseUrl}/api/adherent/courriers/list`,
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          qs: {
-              "startDate": extraction_start_date.toISOString(),
-              "endDate": today.toISOString(),
-              "numeroContratIndividuel": numContrat,
-          },
-          json: true // Automatically stringifies the body to JSON
-      };
-      const documents = await request(documents_options)
-      log('info', `Found ${documents.length} documents from ${extraction_start_date.toISOString()} to ${today.toISOString()}`)
-      let documents_to_download = Array()
-      let document_per_day = {}
-      for (document of documents) {
-          /*
+    log('info', 'Getting list of available documents')
+    var documents_options = {
+      method: 'GET',
+      uri: `${baseUrl}/api/adherent/courriers/list`,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      qs: {
+        startDate: extraction_start_date.toISOString(),
+        endDate: today.toISOString(),
+        numeroContratIndividuel: numContrat
+      },
+      json: true // Automatically stringifies the body to JSON
+    }
+    const documents = await request(documents_options)
+    log(
+      'info',
+      `Found ${
+        documents.length
+      } documents from ${extraction_start_date.toISOString()} to ${today.toISOString()}`
+    )
+    let documents_to_download = Array()
+    let document_per_day = {}
+    for (let document of documents) {
+      /*
           Each document has a dateCreation attribute
           But it doesn't match when the document has been created
           (it is the date the document has been sent)
           To be able to link the bill to the document
           We need the "real" data we can find in the fileName attribute
           */
-          real_date_pattern = /[0-9]{2}\/[0-9]{2}\/[0-9]{4}/g
-          real_date_found = document['fileName'].match(real_date_pattern)
-          if (real_date_found) {
-              //real_document_date = real_date_found[0]
-              d = real_date_found[0].split('/')
-              real_document_date = utils.formatDate(new Date(d[2], d[1]-1, d[0]))
+      let real_date_pattern = /[0-9]{2}\/[0-9]{2}\/[0-9]{4}/g
+      let real_date_found = document['fileName'].match(real_date_pattern)
+      if (real_date_found) {
+        let d = real_date_found[0].split('/')
+        let real_document_date = utils.formatDate(
+          new Date(d[2], d[1] - 1, d[0])
+        )
+      } else {
+        let real_document_date = utils.formatDate(document['dateCreation'])
+      }
 
-          }
-          else {
-              real_document_date = utils.formatDate(document['dateCreation'])
-          }
+      log(
+        'debug',
+        `Real document date: ${real_document_date} versus ${
+          document['dateCreation']
+        }`
+      )
+      var document_options = {
+        method: 'GET',
+        uri: `${baseUrl}/api/adherent/courriers/document`,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        qs: {
+          numeroContratIndividuel: numContrat,
+          docId: parseInt(document['id']),
+          code: document['code']
+        },
+        json: false // Automatically stringifies the body to JSON
+      }
+      const pdf_info = {
+        date: document['dateCreation'],
+        fileurl: `${baseUrl}/api/adherent/courriers/document`,
+        requestOptions: document_options,
+        filename: `${utils.formatDate(
+          document['dateCreation']
+        )}_courrier_${VENDOR}_${document['id']}.pdf`,
+        vendor: VENDOR,
+        metadata: {
+          // It can be interesting to add the date of import. This is not mandatory but may be
+          // useful for debugging or data migration
+          importDate: new Date(),
+          // Document version, useful for migration after change of document structure
+          version: 1
+        }
+      }
+      if (document['code'] == 'APREL5') {
+        // This is a "Relevé de paiement"
+        // Let's not use saveFiles on those
+        // We'll link them to a bill first
+        document_per_day[real_document_date] = pdf_info
+      } else {
+        documents_to_download.push(pdf_info)
+      }
+    }
+    log('info', 'Downloading documents')
+    await saveFiles(documents_to_download, fields, {
+      fileIdAttributes: ['numContrat'],
+      subPath: `${numContrat}`,
+      contentType: 'application/pdf',
+      sourceAccount: this.accountId,
+      sourceAccountIdentifier: fields.login
+    })
+    log('info', 'Getting list of received payments')
+    var payments_options = {
+      method: 'GET',
+      uri: `${baseUrl}/api/adherent/prestations/paiements`,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      qs: {
+        numContrat: numContrat,
+        period: 24,
+        startDate: extraction_start_date.toISOString().slice(0, 10),
+        endDate: today.toISOString().slice(0, 10)
+      },
+      json: true // Automatically stringifies the body to JSON
+    }
+    const payments = await request(payments_options)
+    log(
+      'info',
+      `Found ${
+        payments['paiements'].length
+      } paiements from ${extraction_start_date.toISOString()} to ${today.toISOString()}`
+    )
+    let payments_to_link = Array()
+    let document_to_link = null
+    for (let paiement of payments['paiements']) {
+      log(
+        'info',
+        `Extracting payment info for payment ${paiement['numeroPaiement']}`
+      )
 
-          log('debug', `Real document date: ${real_document_date} versus ${document['dateCreation']}`)
-          var document_options = {
-              method: 'GET',
-              uri: `${baseUrl}/api/adherent/courriers/document`,
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              qs: {
-                  "numeroContratIndividuel": numContrat,
-                  "docId": parseInt(document['id']),
-                  "code": document['code']
-              },
-              json: false // Automatically stringifies the body to JSON
-          };
-          const pdf_info = {
-            date: document['dateCreation'],
-            fileurl: `${baseUrl}/api/adherent/courriers/document`,
-            requestOptions: document_options,
-            filename: `${utils.formatDate(document['dateCreation'])}_courrier_${VENDOR}_${document['id']}.pdf`,
+      /*
+          Let's try to find a mail about this payment
+          We extract the payment date and check the list of
+          received documents (mails) to find the good one
+          */
+      for (let document_date in document_per_day) {
+        // Parse the string and convert it to a Date object
+        let mail_date = new Date(Date.parse(document_date))
+        if (new Date(Date.parse(paiement['datePaiement'])) < mail_date) {
+          // We are looping the keys in order
+          // if our paiement is more recent than our mail,
+          // it means we found the good mail
+          document_to_link = document_date
+          break
+        }
+      }
+      var payment_options = {
+        method: 'GET',
+        uri: `${baseUrl}/api/adherent/prestations/operations-avec-details/${
+          paiement['numeroPaiement']
+        }`,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        qs: {
+          numContrat: numContrat,
+          numPaiement: paiement['numeroPaiement'],
+          period: 24,
+          startDate: extraction_start_date.toISOString().slice(0, 10),
+          endDate: today.toISOString().slice(0, 10)
+        },
+        json: true // Automatically stringifies the body to JSON
+      }
+      const payment_details = await request(payment_options)
+      for (let detail_paiement of payment_details) {
+        for (let remboursement of detail_paiement['details']) {
+          const paiement_info = {
+            amount: remboursement['montantRC'],
+            contractId: numContrat,
+            currency: 'EUR',
+            date: new Date(Date.parse(paiement['datePaiement'])),
+            groupAmount: detail_paiement['montantRC'],
+            isRefund: true,
+            originalDate: new Date(Date.parse(remboursement['dateDebutSoins'])),
+            originalAmount: remboursement['depense'],
+            socialSecurityRefund: remboursement['montantRO'],
+            subtype: remboursement['libelleActe'],
+            type: 'health_costs',
             vendor: VENDOR,
+            filename: document_per_day[document_to_link]['filename'],
+            fileurl: document_per_day[document_to_link]['fileurl'],
+            requestOptions:
+              document_per_day[document_to_link]['requestOptions'],
             metadata: {
               // It can be interesting to add the date of import. This is not mandatory but may be
               // useful for debugging or data migration
@@ -132,117 +251,19 @@ async function start(fields, cozyParameters) {
               version: 1
             }
           }
-          if (document['code'] == "APREL5") {
-            // This is a "Relevé de paiement"
-            // Let's not use saveFiles on those
-            // We'll link them to a bill first
-            document_per_day[real_document_date] = pdf_info
-          }
-          else {
-            documents_to_download.push(pdf_info)
-          }
-      };
-      log('info', 'Downloading documents')
-      await saveFiles(documents_to_download, fields, {
-        fileIdAttributes: ['numContrat', ],
-        subPath: `${numContrat}`,
-        contentType: 'application/pdf',
-        sourceAccount: this.accountId,
-        sourceAccountIdentifier: fields.login
-      });
-      log('info', 'Getting list of received payments')
-      var payments_options = {
-          method: 'GET',
-          uri: `${baseUrl}/api/adherent/prestations/paiements`,
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          qs: {
-              "numContrat": numContrat,
-              "period": 24,
-              "startDate": extraction_start_date.toISOString().slice(0, 10),
-              "endDate": today.toISOString().slice(0, 10)
-          },
-          json: true // Automatically stringifies the body to JSON
-      };
-      const payments = await request(payments_options)
-      log('info', `Found ${payments['paiements'].length} paiements from ${extraction_start_date.toISOString()} to ${today.toISOString()}`)
-      let payments_to_link = Array()
-      let document_to_link = null
-      for (paiement of payments['paiements']) {
-          log('info', `Extracting payment info for payment ${paiement['numeroPaiement']}`)
-
-          /*
-          Let's try to find a mail about this payment
-          We extract the payment date and check the list of
-          received documents (mails) to find the good one
-          */
-          for (document_date in document_per_day) {
-              // Parse the string and convert it to a Date object
-              mail_date =  new Date(Date.parse(document_date))
-              if (new Date(Date.parse(paiement['datePaiement'])) < mail_date) {
-                  // We are looping the keys in order
-                  // if our paiement is more recent than our mail,
-                  // it means we found the good mail
-                  document_to_link =  document_date
-                  break
-              }
-          }
-          var payment_options = {
-              method: 'GET',
-              uri: `${baseUrl}/api/adherent/prestations/operations-avec-details/${paiement['numeroPaiement']}`,
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              qs: {
-                  "numContrat": numContrat,
-                  "numPaiement": paiement['numeroPaiement'],
-                  "period": 24,
-                  "startDate": extraction_start_date.toISOString().slice(0, 10),
-                  "endDate": today.toISOString().slice(0, 10)
-              },
-              json: true // Automatically stringifies the body to JSON
-          };
-          const payment_details = await request(payment_options)
-          for (detail_paiement of payment_details) {
-              for (remboursement of detail_paiement['details']) {
-                  const paiement_info = {
-                    amount: remboursement['montantRC'],
-                    contractId: numContrat,
-                    currency: "EUR",
-                    date: new Date(Date.parse(paiement['datePaiement'])),
-                    groupAmount: detail_paiement['montantRC'],
-                    isRefund: true,
-                    originalDate: new Date(Date.parse(remboursement['dateDebutSoins'])),
-                    originalAmount: remboursement['depense'],
-                    socialSecurityRefund: remboursement['montantRO'],
-                    subtype: remboursement['libelleActe'],
-                    type: "health_costs",
-                    vendor: VENDOR,
-                    filename: document_per_day[document_to_link]['filename'],
-                    fileurl: document_per_day[document_to_link]['fileurl'],
-                    requestOptions: document_per_day[document_to_link]['requestOptions'],
-                    metadata: {
-                      // It can be interesting to add the date of import. This is not mandatory but may be
-                      // useful for debugging or data migration
-                      importDate: new Date(),
-                      // Document version, useful for migration after change of document structure
-                      version: 1
-                    }
-                  }
-                  payments_to_link.push(paiement_info)
-             };
-          };
-      };
-      log('info', 'Saving Bills')
-      await saveBills(payments_to_link, fields, {
-        // This is a bank identifier which will be used to link bills to bank operations. These
-        // identifiers should be at least a word found in the title of a bank operation related to this
-        // bill. It is not case sensitive.
-        identifiers: ['VIASANTE'],
-        sourceAccount: this.accountId,
-        sourceAccountIdentifier: fields.login
-      })
-  //});
-  };
+          payments_to_link.push(paiement_info)
+        }
+      }
+    }
+    log('info', 'Saving Bills')
+    await saveBills(payments_to_link, fields, {
+      // This is a bank identifier which will be used to link bills to bank operations. These
+      // identifiers should be at least a word found in the title of a bank operation related to this
+      // bill. It is not case sensitive.
+      identifiers: ['VIASANTE'],
+      sourceAccount: this.accountId,
+      sourceAccountIdentifier: fields.login
+    })
+    //});
+  }
 }
