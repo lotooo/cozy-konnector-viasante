@@ -132,7 +132,7 @@ async function start(fields, cozyParameters) {
         requestOptions: document_options,
         filename: `${utils.formatDate(
           document['dateCreation']
-        )}_courrier_${VENDOR}_${document['id']}.pdf`,
+        )}_${VENDOR}_${document['id']}.pdf`,
         vendor: VENDOR,
         metadata: {
           // It can be interesting to add the date of import. This is not mandatory but may be
