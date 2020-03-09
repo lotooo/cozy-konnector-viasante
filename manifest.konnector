@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "Viasanté",
   "type": "konnector",
   "language": "node",
@@ -8,7 +8,9 @@
   "source": "git@github.com:konnectors/viasante.git",
   "editor": "lotooo",
   "vendor_link": "https://www.mutuelle-viasante.fr/",
-  "categories": ["insurance"],
+  "categories": [
+    "insurance"
+  ],
   "fields": {
     "login": {
       "type": "email"
@@ -39,14 +41,19 @@
     },
     "accounts": {
       "type": "io.cozy.accounts",
-      "verbs": ["GET"]
+      "verbs": [
+        "GET"
+      ]
     }
   },
   "developer": {
     "name": "Matthieu Serrepuy",
     "url": "https://github.com/lotooo"
   },
-  "langs": ["fr", "en"],
+  "langs": [
+    "fr",
+    "en"
+  ],
   "locales": {
     "fr": {
       "short_description": "Récupère les courriers au format PDF et relie les paiements aux opérations bancaires",
