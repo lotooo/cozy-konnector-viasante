@@ -1,10 +1,10 @@
 {
-  "name": "cozy-konnector-viasante",
+  "name": "viasante",
   "version": "1.0.0",
   "description": "",
   "repository": {
     "type": "git",
-    "url": "git@github.com:lotooo/cozy-konnector-viasante.git"
+    "url": "git@github.com:konnectors/viasante.git"
   },
   "keywords": [],
   "author": "Cozy Cloud",
