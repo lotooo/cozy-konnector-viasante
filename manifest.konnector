@@ -56,8 +56,8 @@
   ],
   "locales": {
     "fr": {
-      "short_description": "Récupère les courriers au format PDF et relie les paiements aux opérations bancaires",
-      "long_description": "Récupère les courriers au format PDF et relie les paiements aux opérations bancaires",
+      "short_description": "Récupère dans votre Cozy les relevés de remboursements, et vos courriers",
+      "long_description": "Viasanté est la mutuelle d'AG2R La Mondiale accessible sur [www.mutuelle-viasante.fr](https://www.mutuelle-viasante.fr/).\n\n<br>**Connectez votre compte Viasanté à votre Cozy pour récupérer**\n\n- toutes vos factures au format pdf\n- tous vos courriers\n\n**Accédez directement à vos documents dans votre Drive personnel**\n\nEn connectant votre compte Viasanté, votre Cozy crée automatiquement un dossier dans **Drive > Administratif > Viasanté**. Vos factures sont à portée de main et toujours accessibles !\n\n<br>**Suivez le montant de vos remboursements de santé avec Banks**\n\nLes remboursements récupérés sont automatiquement liées aux opérations bancaires Viasanté associées à votre compte si vous utilisez l’application Banks. Finis les maux de tête à faire les comptes !\n\n<br>**Sauvegardez vos identifiants avec Pass**\n\nEn installant le gestionnaire de mots de passe, vos identifiants sont sauvegardés une bonne fois pour toutes pour vous faciliter la connexion au site de Viasanté. Adieu les mots de passe oubliés !\n\n<br>**Configuration**\n\nPour connecter votre compte, il vous suffit de renseigner dans les champs :\n\n- votre adresse e-mail\n- votre mot de passe\n\n<br>Une fois connecté, votre Cozy se connectera régulièrement à votre compte Viasanté pour récupérer les nouveaux éléments et les historiser dans un dossier Viasanté dans Drive.\n\n<br>Si vous déconnectez votre compte Viasanté, les informations déjà sauvegardées dans votre Cozy restent disponibles. Vous pouvez les supprimer manuellement par ailleurs.",
       "permissions": {
         "bank operations": {
           "description": "Utilisé pour relier les paiements à des operations bancaires"
@@ -74,8 +74,8 @@
       }
     },
     "en": {
-      "short_description": "Fetch the received mail in PDF",
-      "long_description": "Fetch the PDF received by mail",
+      "short_description": "Retrieve your refund statements and emails",
+      "long_description": "Viasanté is a French health reinsurance.\n\n<br>**Connect your Viasanté account to your Cozy for getting :**\n\n- your refund statements\n- your emails\n\n<br>**Access directly to your documents in your personal Drive**\n\nBy connecting your ekWateur account, your Cozy automatically creates a folder in **Drive > Administrative > Viasanté**.\n\n<br>Follow the amount of your bills with Banks**\n\nThe reimbursements are automatically linked to the Viasanté banking transactions associated with your account if you use the Banks application.\n\n<br>**Save your credentials with Pass**\n\nWith Pass, you will never forget a password again as your credentials are automatically saved in by activating the password manager.\n\n<br>**Configuration**\n\nTo connect your account, you just have to fill in the fields :\n\n- your login (email)\n- your password\n\nOnce logged in, your Cozy will automatically connect to your Viasanté account to retrieve new items and store them in a Viasanté folder in Drive.\n\n<br>If you disconnect your ekWateur account, the information already saved in your Cozy remains available. You can delete them manually elsewhere.",
       "permissions": {
         "bank operations": {
           "description": "Required to link bank operations to payments"
