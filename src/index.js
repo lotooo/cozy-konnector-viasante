@@ -204,6 +204,17 @@ async function start(fields, cozyParameters) {
           document_to_link = document_date
           break
         }
+        log(
+            'debug',
+            `Mail was sent on ${document_date} which is before the paiement received on ${paiement['datePaiement']}`
+        )
+      }
+      if (document_to_link == null) {
+          log(
+            'info',
+            `Payment ${paiement['numeroPaiement']} has not been notified in a mail yet. Skipping it"`
+          )
+          continue
       }
       var payment_options = {
         method: 'GET',
