@@ -15,7 +15,7 @@ const {
 const request = requestFactory({
   // The debug mode shows all the details about HTTP requests and responses. Very useful for
   // debugging but very verbose. This is why it is commented out by default
-  //debug: true,
+  // debug: true,
   // Activates [cheerio](https://cheerio.js.org/) parsing on each page
   cheerio: false,
   // If cheerio is activated do not forget to deactivate json parsing (which is activated by
@@ -64,6 +64,9 @@ async function start(fields, cozyParameters) {
   )
   for (let contrat of contracts['contrats']) {
     var numContrat = parseInt(contrat['numContrat'])
+    log('debug', `${Object.keys(contrat)}`)
+    log('debug', `${Object.keys(contrat['souscripteur']['numPers'])}`)
+    var numPers = parseInt(contrat['souscripteur']['numPers'])
     log('info', `Getting data for contrat ${numContrat}`)
 
     log('info', 'Getting list of available documents')
@@ -71,15 +74,17 @@ async function start(fields, cozyParameters) {
       method: 'GET',
       uri: `${baseUrl}/api/adherent/courriers/list`,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-NumContrat': numContrat,
+        'X-NumPers': numPers
       },
       qs: {
         startDate: extraction_start_date.toISOString(),
-        endDate: today.toISOString(),
-        numeroContratIndividuel: numContrat
+        endDate: today.toISOString()
       },
       json: true // Automatically stringifies the body to JSON
     }
+
     const documents = await request(documents_options)
     log(
       'info',
@@ -90,29 +95,10 @@ async function start(fields, cozyParameters) {
     let documents_to_download = Array()
     let document_per_day = {}
     for (let document of documents) {
-      /*
-          Each document has a dateCreation attribute
-          But it doesn't match when the document has been created
-          (it is the date the document has been sent)
-          To be able to link the bill to the document
-          We need the "real" data we can find in the fileName attribute
-          */
-      let real_date_pattern = /[0-9]{2}\/[0-9]{2}\/[0-9]{4}/g
-      let real_date_found = document['fileName'].match(real_date_pattern)
-      let real_document_date
-      if (real_date_found) {
-        let d = real_date_found[0].split('/')
-        real_document_date = utils.formatDate(new Date(d[2], d[1] - 1, d[0]))
-      } else {
-        real_document_date = utils.formatDate(document['dateCreation'])
-      }
+      log('debug', `filename: ${document['fileName']}`)
+      log('debug', `type: ${document['type']}`)
+      let real_document_date = utils.formatDate(document['creationDate'])
 
-      log(
-        'debug',
-        `Real document date: ${real_document_date} versus ${
-          document['dateCreation']
-        }`
-      )
       var document_options = {
         method: 'GET',
         uri: `${baseUrl}/api/adherent/courriers/document`,
@@ -120,17 +106,20 @@ async function start(fields, cozyParameters) {
           'Content-Type': 'application/json'
         },
         qs: {
-          numeroContratIndividuel: numContrat,
+          fileName: document['fileName'],
+          numContrat: numContrat,
+          codeCentreGestion: 'VIASANTE',
           docId: parseInt(document['id']),
-          code: document['code']
+          type: document['type']
         },
         json: false // Automatically stringifies the body to JSON
       }
+
       const pdf_info = {
-        date: document['dateCreation'],
+        date: document['creationDate'],
         fileurl: `${baseUrl}/api/adherent/courriers/document`,
         requestOptions: document_options,
-        filename: `${utils.formatDate(document['dateCreation'])}_${VENDOR}_${
+        filename: `${utils.formatDate(document['creationDate'])}_${VENDOR}_${
           document['id']
         }.pdf`,
         vendor: VENDOR,
@@ -142,7 +131,7 @@ async function start(fields, cozyParameters) {
           version: 1
         }
       }
-      if (document['code'] == 'APREL5') {
+      if (document['type'] == 'PRESTATIONS') {
         // This is a "Relevé de paiement"
         // Let's not use saveFiles on those
         // We'll link them to a bill first
@@ -164,7 +153,9 @@ async function start(fields, cozyParameters) {
       method: 'GET',
       uri: `${baseUrl}/api/adherent/prestations/paiements`,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-NumContrat': numContrat,
+        'X-NumPers': numPers
       },
       qs: {
         numContrat: numContrat,
@@ -205,16 +196,20 @@ async function start(fields, cozyParameters) {
           break
         }
         log(
-            'debug',
-            `Mail was sent on ${document_date} which is before the paiement received on ${paiement['datePaiement']}`
+          'debug',
+          `Mail was sent on ${document_date} which is before the paiement received on ${
+            paiement['datePaiement']
+          }`
         )
       }
       if (document_to_link == null) {
-          log(
-            'info',
-            `Payment ${paiement['numeroPaiement']} has not been notified in a mail yet. Skipping it"`
-          )
-          continue
+        log(
+          'info',
+          `Payment ${
+            paiement['numeroPaiement']
+          } has not been notified in a mail yet. Skipping it"`
+        )
+        continue
       }
       var payment_options = {
         method: 'GET',
@@ -222,7 +217,9 @@ async function start(fields, cozyParameters) {
           paiement['numeroPaiement']
         }`,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-NumContrat': numContrat,
+          'X-NumPers': numPers
         },
         qs: {
           numContrat: numContrat,
@@ -274,6 +271,6 @@ async function start(fields, cozyParameters) {
       sourceAccount: this.accountId,
       sourceAccountIdentifier: fields.login
     })
-    //});
+    // });
   }
 }
