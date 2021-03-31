@@ -185,7 +185,16 @@ async function start(fields, cozyParameters) {
           We extract the payment date and check the list of
           received documents (mails) to find the good one
           */
-      for (let document_date in document_per_day) {
+
+      /* Fist, let's order properly our array */
+      const ordered_document_per_day = Object.keys(document_per_day).sort().reduce(
+        (obj, key) => {
+          obj[key] = document_per_day[key];
+          return obj;
+        },
+        {}
+      );
+      for (let document_date in ordered_document_per_day) {
         // Parse the string and convert it to a Date object
         let mail_date = new Date(Date.parse(document_date))
         if (new Date(Date.parse(paiement['datePaiement'])) < mail_date) {
